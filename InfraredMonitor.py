@@ -1,9 +1,12 @@
 from InfraredData import InfraredData
+from MonitorState import MonitorState
 import serial, pyautogui, os
 
 class InfraredMonitor: 
     ser = None
     mapping = None
+    actions = None
+    persistant_state = None
 
     def __init__(
         self, 
@@ -18,47 +21,115 @@ class InfraredMonitor:
             timeout=None
         )
         self.mapping = input_to_name_map
+        self.actions = {
+            'ON/OFF': self.action_on_off,
+            'RATIO': self.action_ratio,
+            'TEXT': self.action_text,
+            'VOLUME UP': self.action_volume_up,
+            'VOLUME DOWN': self.action_volume_down,
+            'PAGE UP': self.action_page_up,
+            'PAGE DOWN': self.action_page_down,
+            'MUTE': self.action_mute,
+            'PAUSE': self.action_pause, 
+            'PLAY': self.action_play, 
+            'FASTFORWARD': self.action_fastforward, 
+            'REWIND': self.action_rewind, 
+            'RED': self.action_red,
+        }
     
     def main_loop(self):
-        previous_value = None
+        print('Monitor ready')
+        self.persistant_state = MonitorState()
         while True:
             data = InfraredData()
 
             # Wait for next raw input and store it
-            data.raw_value = self.ser.readline().strip().decode("utf-8") 
+            data.raw_value = self.ser.readline().strip().decode('utf-8') 
             
             # Get mapped value from raw input
             if data.raw_value in self.mapping: 
                 data.value = self.mapping[data.raw_value]
             else:
-                data.value = "UNKNOWN"
+                data.value = 'UNKNOWN'
 
             # Handle special hold characters
-            if data.value == "SPECIAL HELD":
-                data.value = previous_value
-                data.is_held = True
+            if data.value == 'SPECIAL HELD':
+                data.value = self.persistant_state.previous_value
+                self.persistant_state.held_duration += 1
             else:
-                data.is_held = False
+                self.persistant_state.previous_value = data.value
+                self.persistant_state.held_duration = 0
 
-            # Action
-            InfraredMonitor.run_action(data)
+            # Run action (TODO: Maybe have a try statement here just in case)
+            print(str(vars(data)) + " - " + str(self.persistant_state.held_duration))
+            if data.value in self.actions:
+                self.actions[data.value](data)
 
-            # Prepare for next raw input
-            previous_value = data.value
+    def action_volume_up(self, data: InfraredData):
+        pyautogui.press('volumeup')
+    
+    def action_volume_down(self, data: InfraredData):
+        pyautogui.press('volumedown')
 
-    @staticmethod
-    def run_action(data: InfraredData):
-        print(vars(data))
-        if data.value == "VOLUME UP": pyautogui.press("volumeup")
-        if data.value == "VOLUME DOWN": pyautogui.press("volumedown")
-        if data.value == "MUTE" and not data.is_held: pyautogui.press("volumemute")
-        if data.value == "PAUSE" and not data.is_held: pyautogui.press("pause")
-        if data.value == "PLAY" and not data.is_held: pyautogui.press("playpause")
-        if data.value == "FASTFORWARD" and not data.is_held: pyautogui.press("nexttrack")
-        if data.value == "REWIND" and not data.is_held: pyautogui.press("prevtrack")
-        if data.value == "ON/OFF" and not data.is_held: os.system('shutdown -s -t 5')
-        if data.value == "TV/RAD" and not data.is_held: os.system('shutdown -a')
-        if data.value == "1": print(pyautogui.getActiveWindow())
+    def action_mute(self, data: InfraredData):
+        if not self.state_is_held():
+            pyautogui.press('volumemute')
 
+    def action_pause(self, data: InfraredData):
+        if not self.state_is_held():
+            pyautogui.press('pause')
 
+    def action_play(self, data: InfraredData):
+        if not self.state_is_held():
+            pyautogui.press('playpause')
+
+    def action_ratio(self, data: InfraredData):
+        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            pyautogui.press('f')
+
+    def action_text(self, data: InfraredData):
+        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            pyautogui.press('c')
+
+    def action_fastforward(self, data: InfraredData):
+        if self.state_is_held_tick(2) and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            pyautogui.press('l')
+        else:
+            pyautogui.press('nexttrack')
+
+    def action_rewind(self, data: InfraredData):
+        if self.state_is_held_tick(2) and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            pyautogui.press('j')
+        else:
+            pyautogui.press('prevtrack')
         
+    def action_page_up(self, data: InfraredData):
+        if self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            with pyautogui.hold('shift'):
+                pyautogui.press('n')
+
+    def action_page_down(self, data: InfraredData):
+        if self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+            with pyautogui.hold('shift'):
+                pyautogui.press('p')
+
+    def action_on_off(self, data: InfraredData):
+        if not self.state_is_held():
+            if self.persistant_state.shutdown_started:
+                os.system('shutdown -a')
+                self.persistant_state.shutdown_started = False
+            else:
+                os.system('shutdown -s -t 10')
+                self.persistant_state.shutdown_started = True
+
+    def action_red(self, data: InfraredData):
+        print(pyautogui.getActiveWindow())
+
+    def state_youtube_is_focussed(self, active_window_title):
+        return ' - YouTube' in active_window_title # This has only been tested for Edge
+    
+    def state_is_held(self):
+        return self.persistant_state.held_duration > 0
+    
+    def state_is_held_tick(self, tick_rate):
+        return self.persistant_state.held_duration % tick_rate == 0
