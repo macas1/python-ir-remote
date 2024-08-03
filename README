@@ -1,0 +1,23 @@
+TODO:
+    Handle errors:
+        Serial permission denied (Used by another program)
+        No such com port exists (Unplugged)
+
+    Simulate releases (Add state to press: INITIAL, HELD, RELEASE, SIMULATED_RELEASE)
+
+    States/Actions
+    States and actions in dictionary???
+    1. Button/ser (Main action) Look up function in dict
+    2. Use state functions to gather necessary state, and decide sendary action, in another dict
+
+    OR
+    1. Gather ser and and state information
+    2. Look up action in table
+
+
+    First state,
+        "Watching Youtube"
+        possible solution: pyautogui.getActiveWindow() for title and size? Get example from more browsers. Examples: 
+        <Win32Window left="0", top="0", width="1920", height="1080", 
+        title="If You Laugh, You Leave #21 - YouTube - Personal - Microsoft​ Edge">
+    
