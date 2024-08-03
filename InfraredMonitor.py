@@ -104,12 +104,12 @@ class InfraredMonitor:
             pyautogui.press('prevtrack')
         
     def action_page_up(self, data: InfraredData):
-        if self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
             with pyautogui.hold('shift'):
                 pyautogui.press('n')
 
     def action_page_down(self, data: InfraredData):
-        if self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
+        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
             with pyautogui.hold('shift'):
                 pyautogui.press('p')
 
