@@ -12,6 +12,7 @@ if __name__ == '__main__':
     monitor = InfraredMonitor(
         auduino_port, 
         auduino_baudrate,
-        mapping
+        mapping,
+        True
     )
     monitor.main_loop()

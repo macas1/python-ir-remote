@@ -1,0 +1,103 @@
+[
+    { "__________COMMENT__________": "DEFAULT ACTIONS" },
+    {
+        "TriggerValue": "ON/OFF",
+        "Requirements": [],
+        "PressType": "initial",
+        "Action": "begin_shutdown"
+    },
+    {
+        "TriggerValue": "ON/OFF",
+        "Requirements": ["shutting_down"],
+        "PressType": "initial",
+        "Action": "cancel_shutdown"
+    },
+    {
+        "TriggerValue": "VOLUME UP",
+        "Requirements": [],
+        "PressType": "all",
+        "Action": "press_volume_up"
+    },
+    {
+        "TriggerValue": "VOLUME DOWN",
+        "Requirements": [],
+        "PressType": "all",
+        "Action": "press_volume_down"
+    },
+    {
+        "TriggerValue": "MUTE",
+        "Requirements": [],
+        "PressType": "initial",
+        "Action": "press_volume_mute"
+    },
+    {
+        "TriggerValue": "PAUSE",
+        "Requirements": [],
+        "PressType": "initial",
+        "Action": "press_pause"
+    },
+    {
+        "TriggerValue": "PLAY",
+        "Requirements": [],
+        "PressType": "initial",
+        "Action": "press_playpause"
+    },
+    {
+        "TriggerValue": "FASTFORWARD",
+        "Requirements": [],
+        "PressType": "all",
+        "Action": "press_nexttrack"
+    },
+    {
+        "TriggerValue": "REWIND",
+        "Requirements": [],
+        "PressType": "all",
+        "Action": "press_prevtrack"
+    },
+    {
+        "TriggerValue": "RED",
+        "Requirements": [],
+        "PressType": "all",
+        "Action": "test",
+        "description": "Used to test whatever I'm currently working on"
+    },
+
+    
+    { "__________COMMENT__________": "YOUTUBE ACTIONS" },
+    {
+        "TriggerValue": "RATIO",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "initial",
+        "Action": "press_f"
+    },
+    {
+        "TriggerValue": "TEXT",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "initial",
+        "Action": "press_c"
+    },
+    {
+        "TriggerValue": "PAGE UP",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "initial",
+        "Action": "press_shift_n"
+    },
+    {
+        "TriggerValue": "PAGE DOWN",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "initial",
+        "Action": "press_shift_p"
+    },
+    {
+        "TriggerValue": "FASTFORWARD",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "slow_hold",
+        "Action": "press_l"
+    },
+    {
+        "TriggerValue": "REWIND",
+        "Requirements": ["youtube_focussed"],
+        "PressType": "slow_hold",
+        "Action": "press_j"
+    }
+]

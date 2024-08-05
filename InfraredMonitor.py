@@ -1,18 +1,20 @@
 from InfraredData import InfraredData
 from MonitorState import MonitorState
-import serial, pyautogui, os
+import serial, pyautogui, os, json
 
 class InfraredMonitor: 
     ser = None
     mapping = None
     actions = None
     persistant_state = None
+    debug = None
 
     def __init__(
         self, 
         serial_port, 
         serial_baudrate,
-        input_to_name_map
+        input_to_name_map,
+        debug = False
     ):
         # Init serial connection and required data
         self.ser = serial.Serial(
@@ -21,21 +23,29 @@ class InfraredMonitor:
             timeout=None
         )
         self.mapping = input_to_name_map
-        self.actions = {
-            'ON/OFF': self.action_on_off,
-            'RATIO': self.action_ratio,
-            'TEXT': self.action_text,
-            'VOLUME UP': self.action_volume_up,
-            'VOLUME DOWN': self.action_volume_down,
-            'PAGE UP': self.action_page_up,
-            'PAGE DOWN': self.action_page_down,
-            'MUTE': self.action_mute,
-            'PAUSE': self.action_pause, 
-            'PLAY': self.action_play, 
-            'FASTFORWARD': self.action_fastforward, 
-            'REWIND': self.action_rewind, 
-            'RED': self.action_red,
-        }
+        self.debug = debug
+        self.actions = self.get_actions()
+
+    def get_actions(self):
+        actions = {}
+        # Get actions from jason file in a dict format for quick referencing
+        with open('Actions.json', 'r') as json_file:
+            for action_item in json.load(json_file):
+                try:
+                    trigger_value = action_item["TriggerValue"]
+                except KeyError:
+                    continue
+                del action_item["TriggerValue"]
+                if trigger_value not in actions:
+                    actions[trigger_value] = []
+                actions[trigger_value].append(action_item)
+        
+        # Sort arrays by requirement count
+        for action in actions:
+            actions[action].sort(key=lambda a: len(a["Requirements"]), reverse=True)
+
+        # TODO: Validate requirements
+        return actions           
     
     def main_loop(self):
         print('Monitor ready')
@@ -60,76 +70,95 @@ class InfraredMonitor:
                 self.persistant_state.previous_value = data.value
                 self.persistant_state.held_duration = 0
 
-            # Run action (TODO: Maybe have a try statement here just in case)
-            print(str(vars(data)) + " - " + str(self.persistant_state.held_duration))
-            if data.value in self.actions:
-                self.actions[data.value](data)
+            # Run action
+            self.dubug_print("\n" + str(vars(data)) + ", HoldDuration: " + str(self.persistant_state.held_duration))
+            self.run_action(data.value)
 
-    def action_volume_up(self, data: InfraredData):
+    def run_action(self, value: str):
+        if value in self.actions:
+            for action in self.actions[value]:
+                # Check if all requirements are met
+                requirement_met = True
+                for requirement in action["Requirements"]:
+                    if not getattr(self, 'requirement_' + requirement)():
+                        requirement_met = False
+                        break
+                # If requirements are met, try to use this action and ignore all others
+                if requirement_met:
+                    # Run the action if if should run on this press/hold tick
+                    press_function_result = getattr(self, 'press_' + action["PressType"])()
+                    self.dubug_print(str(action) + ", Pressed: " + str(press_function_result))
+                    if press_function_result: 
+                        getattr(self, 'action_' + action["Action"])()
+                    break
+    
+    def dubug_print(self, string: str):
+        if self.debug:
+            print(string)
+
+    def action_press_volume_up(self):
         pyautogui.press('volumeup')
     
-    def action_volume_down(self, data: InfraredData):
+    def action_press_volume_down(self):
         pyautogui.press('volumedown')
 
-    def action_mute(self, data: InfraredData):
-        if not self.state_is_held():
-            pyautogui.press('volumemute')
+    def action_press_volume_mute(self):
+        pyautogui.press('volumemute')
 
-    def action_pause(self, data: InfraredData):
-        if not self.state_is_held():
-            pyautogui.press('pause')
+    def action_press_pause(self):
+        pyautogui.press('pause')
 
-    def action_play(self, data: InfraredData):
-        if not self.state_is_held():
-            pyautogui.press('playpause')
+    def action_press_playpause(self):
+        pyautogui.press('playpause')
 
-    def action_ratio(self, data: InfraredData):
-        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            pyautogui.press('f')
+    def action_press_f(self):
+        pyautogui.press('f')
 
-    def action_text(self, data: InfraredData):
-        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            pyautogui.press('c')
+    def action_press_c(self):
+        pyautogui.press('c')
 
-    def action_fastforward(self, data: InfraredData):
-        if self.state_is_held_tick(2) and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            pyautogui.press('l')
-        else:
-            pyautogui.press('nexttrack')
+    def action_press_nexttrack(self):
+        pyautogui.press('nexttrack')
 
-    def action_rewind(self, data: InfraredData):
-        if self.state_is_held_tick(2) and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            pyautogui.press('j')
-        else:
-            pyautogui.press('prevtrack')
+    def action_press_l(self):
+        pyautogui.press('l')
+
+    def action_press_prevtrack(self):
+        pyautogui.press('prevtrack')
+
+    def action_press_j(self):
+        pyautogui.press('j')
         
-    def action_page_up(self, data: InfraredData):
-        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            with pyautogui.hold('shift'):
-                pyautogui.press('n')
+    def action_press_shift_n(self):
+        with pyautogui.hold('shift'):
+            pyautogui.press('n')
 
-    def action_page_down(self, data: InfraredData):
-        if not self.state_is_held() and self.state_youtube_is_focussed(pyautogui.getActiveWindowTitle()):
-            with pyautogui.hold('shift'):
-                pyautogui.press('p')
+    def action_press_shift_p(self):
+        with pyautogui.hold('shift'):
+            pyautogui.press('p')   
 
-    def action_on_off(self, data: InfraredData):
-        if not self.state_is_held():
-            if self.persistant_state.shutdown_started:
-                os.system('shutdown -a')
-                self.persistant_state.shutdown_started = False
-            else:
-                os.system('shutdown -s -t 10')
-                self.persistant_state.shutdown_started = True
-
-    def action_red(self, data: InfraredData):
+    def action_test(self):
         print(pyautogui.getActiveWindow())
 
-    def state_youtube_is_focussed(self, active_window_title):
-        return ' - YouTube' in active_window_title # This has only been tested for Edge
-    
-    def state_is_held(self):
-        return self.persistant_state.held_duration > 0
-    
-    def state_is_held_tick(self, tick_rate):
-        return self.persistant_state.held_duration % tick_rate == 0
+    def action_begin_shutdown(self):
+        os.system('shutdown -s -t 10')
+        self.persistant_state.shutdown_started = True
+
+    def action_cancel_shutdown(self):
+        os.system('shutdown -a')
+        self.persistant_state.shutdown_started = False
+
+    def requirement_shutting_down(self):
+        return self.persistant_state.shutdown_started == True
+
+    def requirement_youtube_focussed(self):
+        return ' - YouTube' in pyautogui.getActiveWindowTitle() # This has only been tested for Edge
+
+    def press_all(self):
+        return True
+
+    def press_initial(self):
+        return self.persistant_state.held_duration == 0
+
+    def press_slow_hold(self):
+        return self.persistant_state.held_duration % 2 == 0
