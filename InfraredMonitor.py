@@ -1,5 +1,6 @@
 from InfraredData import InfraredData
 from MonitorState import MonitorState
+from time import sleep
 import serial, pyautogui, os, json
 
 class InfraredMonitor: 
@@ -14,19 +15,41 @@ class InfraredMonitor:
         serial_port, 
         serial_baudrate,
         input_to_name_map,
-        debug = False
+        debug = False,
+        connection_attempts = 4,
+        connection_sleep = 5
     ):
-        # Init serial connection and required data
-        self.ser = serial.Serial(
-            port=serial_port, 
-            baudrate=serial_baudrate, 
-            timeout=None
-        )
         self.mapping = input_to_name_map
         self.debug = debug
-        self.actions = self.get_actions()
+        self.ser = InfraredMonitor.get_serial_connection(
+            serial_port, 
+            serial_baudrate, 
+            connection_attempts,
+            connection_sleep
+        )
+        self.actions = InfraredMonitor.get_actions()
 
-    def get_actions(self):
+    @staticmethod
+    def get_serial_connection(serial_port, serial_baudrate, connection_attempts, connection_sleep):
+        while connection_attempts != 0:
+            try:
+                return serial.Serial(
+                    port=serial_port, 
+                    baudrate=serial_baudrate, 
+                    timeout=None
+                )
+            except Exception as e:
+                message = str(e)
+                connection_attempts -= 1
+                print(message[:1].upper() + message[1:])
+                if connection_attempts != 0:
+                    print("Trying again in", connection_sleep, "seconds.", connection_attempts, "attempt(s) left.")
+                    sleep(connection_sleep)
+
+        raise serial.SerialException("Could not open port '" + serial_port + "'.")
+
+    @staticmethod
+    def get_actions():
         actions = {}
         # Get actions from jason file in a dict format for quick referencing
         with open('Actions.json', 'r') as json_file:
@@ -61,7 +84,7 @@ class InfraredMonitor:
         # Validate requirement, press & action functions
         attr_func_names.sort()
         for func_name in attr_func_names:
-            if not hasattr(self, func_name):
+            if not hasattr(InfraredMonitor, func_name):
                 print("WARNING: InfraredMonitor method '" + func_name + "' does not exist.")
 
         #Return
