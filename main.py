@@ -3,7 +3,7 @@ from InfraredMonitor import InfraredMonitor
 
 # Settings
 mapping_files = ['TVAKB73715603']
-auduino_port = 'COM5'
+auduino_port = 'COM4'
 auduino_baudrate = 9600
 
 # Main
