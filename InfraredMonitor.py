@@ -40,15 +40,35 @@ class InfraredMonitor:
                     actions[trigger_value] = []
                 actions[trigger_value].append(action_item)
         
-        # Sort arrays by requirement count
-        for action in actions:
-            actions[action].sort(key=lambda a: len(a["Requirements"]), reverse=True)
+        attr_func_names = []
+        for action_key in actions:
+            action_item = actions[action_key]
 
-        # TODO: Validate requirements
-        return actions           
+            # Sort common actions by requirement count
+            action_item.sort(key=lambda act: len(act["Requirements"]), reverse=True)
+
+            # Collect class function names for validation
+            for action in action_item:
+                try:
+                    for requirement in action["Requirements"]:
+                        attr_func_names.append('requirement_' + requirement)
+                    attr_func_names.append("press_" + action["PressType"])
+                    attr_func_names.append("action_" + action["Action"])
+                except KeyError:
+                    raise KeyError("An item in your 'Actions.json' structure is missing a required key. See previous error for more details.")
+                    
+
+        # Validate requirement, press & action functions
+        attr_func_names.sort()
+        for func_name in attr_func_names:
+            if not hasattr(self, func_name):
+                print("WARNING: InfraredMonitor method '" + func_name + "' does not exist.")
+
+        #Return
+        return actions
     
     def main_loop(self):
-        print('Monitor ready')
+        print('Monitor ready.')
         self.persistant_state = MonitorState()
         while True:
             data = InfraredData()
@@ -141,7 +161,7 @@ class InfraredMonitor:
         print(pyautogui.getActiveWindow())
 
     def action_begin_shutdown(self):
-        os.system('shutdown -s -t 10')
+        os.system('shutdown -s -t 5')
         self.persistant_state.shutdown_started = True
 
     def action_cancel_shutdown(self):
