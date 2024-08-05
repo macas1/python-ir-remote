@@ -1,7 +1,7 @@
 class MonitorState:
-    shutdown_started = None
-    previous_value = None
-    held_duration = None
+    shutdown_started: bool = None
+    held_duration: int = None
+    previous_value: str | None = None
 
     def __init__(self):
         self.shutdown_started = False

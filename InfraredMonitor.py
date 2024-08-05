@@ -4,11 +4,11 @@ from time import sleep
 import serial, pyautogui, os, json
 
 class InfraredMonitor: 
-    ser = None
-    mapping = None
-    actions = None
-    persistant_state = None
-    debug = None
+    ser: serial.Serial = None
+    mapping: dict = None
+    actions: dict = None
+    persistant_state: MonitorState = None
+    debug: bool = None
 
     def __init__(
         self, 

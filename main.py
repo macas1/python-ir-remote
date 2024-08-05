@@ -2,9 +2,9 @@ from MapLoader import MapLoader
 from InfraredMonitor import InfraredMonitor
 
 # Settings
-mapping_files = ['TVAKB73715603']
-auduino_port = 'COM4'
-auduino_baudrate = 9600
+mapping_files: list[str] = ['TVAKB73715603']
+auduino_port: str = 'COM4'
+auduino_baudrate: int = 9600
 
 # Main
 if __name__ == '__main__':
