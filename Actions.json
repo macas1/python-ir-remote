@@ -71,7 +71,7 @@
         "Action": "press_f"
     },
     {
-        "TriggerValue": "TEXT",
+        "TriggerValue": "SUBTITLE",
         "Requirements": ["youtube_focussed"],
         "PressType": "initial",
         "Action": "press_c"
