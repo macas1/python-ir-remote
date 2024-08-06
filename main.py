@@ -13,6 +13,7 @@ if __name__ == '__main__':
         auduino_port, 
         auduino_baudrate,
         mapping,
-        debug=True
+        debug=True,
+        value_life_span=200000000
     )
     monitor.main_loop()

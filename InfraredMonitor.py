@@ -1,6 +1,7 @@
 from InfraredData import InfraredData
 from MonitorState import MonitorState
-from time import sleep
+from time import sleep, time_ns
+from datetime import datetime
 import serial, pyautogui, os, json
 
 class InfraredMonitor: 
@@ -9,6 +10,7 @@ class InfraredMonitor:
     actions: dict = None
     persistant_state: MonitorState = None
     debug: bool = None
+    value_life_span: int = None # In nanoseconds
 
     def __init__(
         self, 
@@ -17,7 +19,8 @@ class InfraredMonitor:
         input_to_name_map,
         debug = False,
         connection_attempts = 4,
-        connection_sleep = 5
+        connection_sleep = 5,
+        value_life_span = 1000000000
     ):
         self.mapping = input_to_name_map
         self.debug = debug
@@ -28,6 +31,7 @@ class InfraredMonitor:
             connection_sleep
         )
         self.actions = InfraredMonitor.get_actions()
+        self.value_life_span = value_life_span
         pyautogui.FAILSAFE = False
 
     @staticmethod
@@ -99,24 +103,43 @@ class InfraredMonitor:
 
             # Wait for next raw input and store it
             data.raw_value = self.ser.readline().strip().decode('utf-8') 
+            time_recieved = time_ns()
             
             # Get mapped value from raw input
             if data.raw_value in self.mapping: 
                 data.value = self.mapping[data.raw_value]
             else:
-                data.value = 'UNKNOWN'
+                data.value = 'UNKNOWN VALUE'
 
             # Handle special hold characters
             if data.value == 'SPECIAL HELD':
-                data.value = self.persistant_state.previous_value
-                self.persistant_state.held_duration += 1
+                if self.is_held_value_valid():
+                    if self.persistant_state.previous_value != None:
+                        data.value = self.persistant_state.previous_value
+                    else:
+                        data.value = 'UNKNOWN HOLD'
+                    self.persistant_state.previous_value_time = time_recieved
+                    self.persistant_state.held_duration += 1
+                else:
+                    data.value = 'UNKNOWN DEAD HOLD'
+                    self.persistant_state.held_duration = 0
             else:
                 self.persistant_state.previous_value = data.value
+                self.persistant_state.previous_value_time = time_recieved
                 self.persistant_state.held_duration = 0
 
             # Run action
-            self.dubug_print("\n" + str(vars(data)) + ", HoldDuration: " + str(self.persistant_state.held_duration))
+            self.debug_print("")
+            self.debug_print_time()
+            self.debug_print(str(vars(data)) + ", HoldDuration: " + str(self.persistant_state.held_duration))
             self.run_action(data.value)
+
+    def is_held_value_valid(self):
+        if self.persistant_state.previous_value_time == None:
+            return True
+        if time_ns() - self.persistant_state.previous_value_time <= self.value_life_span:
+            return True
+        return False
 
     def run_action(self, value: str):
         if value in self.actions:
@@ -131,14 +154,19 @@ class InfraredMonitor:
                 if requirement_met:
                     # Run the action if if should run on this press/hold tick
                     press_function_result = getattr(self, 'press_' + action["PressType"])()
-                    self.dubug_print(str(action) + ", Pressed: " + str(press_function_result))
+                    self.debug_print(str(action) + ", Pressed: " + str(press_function_result))
                     if press_function_result: 
                         getattr(self, 'action_' + action["Action"])()
                     break
     
-    def dubug_print(self, string: str):
+    def debug_print(self, string: str):
         if self.debug:
             print(string)
+
+    def debug_print_time(self):
+        if self.debug:
+            full_string = datetime.now().strftime('%I:%M:%S.%f %p')
+            print(full_string[:10] + full_string[14:])
 
     def action_press_volume_up(self):
         pyautogui.press('volumeup')
