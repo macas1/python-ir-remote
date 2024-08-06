@@ -28,6 +28,7 @@ class InfraredMonitor:
             connection_sleep
         )
         self.actions = InfraredMonitor.get_actions()
+        pyautogui.FAILSAFE = False
 
     @staticmethod
     def get_serial_connection(serial_port, serial_baudrate, connection_attempts, connection_sleep):
