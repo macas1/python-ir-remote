@@ -7,4 +7,3 @@ TODO:
                         |- Page up
                         |- Page Down
                         |- Volume up (Default)
-        - Sometimes random zeros appear, make previous_value invalid after some time of inactivity
